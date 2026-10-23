@@ -20,6 +20,15 @@ val NarandzastaPozadina = Color(0xFFFFF7ED)
 val NarandzastaIvica = Color(0xFFFDBA74)
 val NarandzastaTekst = Color(0xFF9A3412)
 
+/** Boja polja po razredu: (pozadina, tekst). */
+fun bojaRazreda(odeljenje: String): Pair<Color, Color> = when (odeljenje.takeWhile { !it.isDigit() }) {
+    "V" -> PlavaSvetla to PlavaTamna
+    "VI" -> Color(0xFFEDE4FB) to Color(0xFF4C1D95)
+    "VII" -> Tirkizna to TirkiznaTamna
+    "VIII" -> Color(0xFFFDEFC8) to Color(0xFF78350F)
+    else -> PlavaSvetla to PlavaTamna
+}
+
 @Composable
 fun RasporedTema(content: @Composable () -> Unit) {
     MaterialTheme(

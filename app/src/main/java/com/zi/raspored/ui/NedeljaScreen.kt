@@ -22,6 +22,10 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,8 +36,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zi.raspored.logic.Motor
 import com.zi.raspored.model.CasUDanu
-import com.zi.raspored.model.Izmena
-import com.zi.raspored.model.SkolskiPodaci
+import com.zi.raspored.model.Podaci
+import com.zi.raspored.model.SMENA_A
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -44,21 +48,31 @@ fun NedeljaScreen(
     dan: LocalDate,
     onIzaberi: (LocalDate) -> Unit,
     sada: LocalDateTime,
-    izmene: List<Izmena>,
-    onIzmena: (LocalDate, Int) -> Unit,
+    podaci: Podaci,
+    onIzmena: (LocalDate, Int, Int) -> Unit,
 ) {
+    val post = podaci.postavke ?: return
+    var tab by rememberSaveable { mutableStateOf(SMENA_A) }
+    val smena = if (post.smena(tab) != null) tab else SMENA_A
     val ponedeljak = dan.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-    val smena = Motor.smena(ponedeljak)
-    val termini = SkolskiPodaci.satnica.getValue(smena)
+    val posle = Motor.posle(ponedeljak, smena, post)
+    val termini = Motor.termini(ponedeljak, smena, podaci)
+    val ukupno = podaci.raspored.size
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Zaglavlje("${brojCasova(SkolskiPodaci.raspored.size)} nedeljno", "Nedelja") {
+        Zaglavlje("${brojCasova(ukupno)} nedeljno", "Nedelja") {
             DugmeIkona(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Prethodna nedelja") { onIzaberi(dan.minusWeeks(1)) }
             Spacer(Modifier.width(6.dp))
             DugmeIkona(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Sledeća nedelja") { onIzaberi(dan.plusWeeks(1)) }
+        }
+
+        if (post.b != null) {
+            Box(Modifier.padding(top = 6.dp)) {
+                Segment(listOf("Smena A", "Smena B"), smena) { tab = it }
+            }
         }
 
         Row(
@@ -73,7 +87,7 @@ fun NedeljaScreen(
                 fontWeight = FontWeight.Bold,
                 color = Tekst,
             )
-            Znacka("${smenaTekst(smena)} · ${termini.first().pocetak.hm()}–${termini.last().kraj.hm()}")
+            Znacka("${dobaTekst(posle)} · ${termini.first().pocetak.hm()}–${termini.last().kraj.hm()}")
         }
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -89,7 +103,7 @@ fun NedeljaScreen(
         for (i in 0..4) {
             val d = ponedeljak.plusDays(i.toLong())
             val nastavni = Motor.jeNastavniDan(d)
-            val casovi = Motor.casoviZaDan(d, izmene)
+            val casovi = Motor.casoviSmene(d, smena, podaci)
             val jeDanas = d == sada.toLocalDate()
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Column(Modifier.width(34.dp).height(72.dp), verticalArrangement = Arrangement.Center) {
@@ -109,13 +123,14 @@ fun NedeljaScreen(
                         Text(Motor.razlogNeradnog(d) ?: "", fontSize = 13.sp, color = Siva, fontWeight = FontWeight.SemiBold)
                     }
                 } else {
-                    for (b in 1..termini.size) {
+                    val dtermini = Motor.termini(d, smena, podaci)
+                    for (b in 1..dtermini.size) {
                         val c = casovi.firstOrNull { it.broj == b }
                         val trenutni = jeDanas && run {
                             val v = sada.toLocalTime()
-                            !v.isBefore(termini[b - 1].pocetak) && v.isBefore(termini[b - 1].kraj)
+                            !v.isBefore(dtermini[b - 1].pocetak) && v.isBefore(dtermini[b - 1].kraj)
                         }
-                        Celija(c, trenutni, Modifier.weight(1f)) { onIzmena(d, b) }
+                        Celija(c, trenutni, Modifier.weight(1f)) { onIzmena(d, b, smena) }
                     }
                 }
             }
@@ -125,8 +140,6 @@ fun NedeljaScreen(
             Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Legenda(PlavaSvetla, "V razred")
-            Legenda(Tirkizna, "VII razred")
             Legenda(NarandzastaPozadina, "izmena")
             Legenda(Plava, "sada")
         }
@@ -146,18 +159,16 @@ private fun Celija(cas: CasUDanu?, trenutni: Boolean, modifier: Modifier, onClic
         Box(modifier.height(72.dp).clip(oblik).border(1.dp, Granica, oblik).clickable(onClick = onClick))
         return
     }
-    val vii = cas.odeljenje.startsWith("VII")
+    val (razredPozadina, razredBoja) = bojaRazreda(cas.odeljenje)
     val pozadina = when {
         trenutni && !cas.otkazan -> Plava
         cas.izmenjen -> NarandzastaPozadina
-        vii -> Tirkizna
-        else -> PlavaSvetla
+        else -> razredPozadina
     }
     val boja = when {
         trenutni && !cas.otkazan -> Color.White
         cas.izmenjen -> NarandzastaTekst
-        vii -> TirkiznaTamna
-        else -> PlavaTamna
+        else -> razredBoja
     }
     Column(
         modifier.height(72.dp).clip(oblik).background(pozadina)

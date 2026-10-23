@@ -19,7 +19,10 @@ fun LocalTime.hm(): String = "%02d:%02d".format(hour, minute)
 
 fun Termin.tekst(): String = "${pocetak.hm()}–${kraj.hm()}"
 
-fun smenaTekst(smena: Int): String = if (smena == 1) "I smena" else "II smena"
+/** I smena = pre podne, II smena = posle podne. */
+fun dobaTekst(posle: Boolean): String = if (posle) "II smena" else "I smena"
+
+fun smenaSlovo(smena: Int): String = if (smena == 0) "A" else "B"
 
 fun trajanje(min: Long): String =
     if (min >= 60) "${min / 60} h ${min % 60} min" else "$min min"

@@ -26,12 +26,14 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zi.raspored.logic.Motor
 import com.zi.raspored.model.CasUDanu
-import com.zi.raspored.model.Izmena
+import com.zi.raspored.model.Podaci
+import com.zi.raspored.model.SMENA_A
 import com.zi.raspored.model.Termin
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -43,18 +45,23 @@ fun DanScreen(
     dan: LocalDate,
     onIzaberi: (LocalDate) -> Unit,
     sada: LocalDateTime,
-    izmene: List<Izmena>,
-    onIzmena: (LocalDate, Int) -> Unit,
+    podaci: Podaci,
+    onIzmena: (LocalDate, Int, Int) -> Unit,
 ) {
+    val post = podaci.postavke ?: return
     val ponedeljak = dan.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
     val petak = ponedeljak.plusDays(4)
-    val casovi = Motor.casoviZaDan(dan, izmene)
+    val nadnaslov = if (post.b == null) {
+        "${ponedeljak.dayOfMonth}.–${petak.kratko()} · ${dobaTekst(Motor.posle(dan, SMENA_A, post))}"
+    } else {
+        "${ponedeljak.dayOfMonth}.–${petak.kratko()}"
+    }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Zaglavlje("${ponedeljak.dayOfMonth}.–${petak.kratko()} · ${smenaTekst(Motor.smena(dan))}", "Dan") {
+        Zaglavlje(nadnaslov, "Dan") {
             DugmeIkona(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Prethodna nedelja") { onIzaberi(dan.minusWeeks(1)) }
             Spacer(Modifier.width(6.dp))
             DugmeIkona(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Sledeća nedelja") { onIzaberi(dan.plusWeeks(1)) }
@@ -73,20 +80,32 @@ fun DanScreen(
                 Text("Nema nastave ovog dana.", fontSize = 15.sp, color = Siva)
             }
         } else {
-            val termini = Motor.termini(dan)
-            termini.forEachIndexed { idx, termin ->
-                val broj = idx + 1
-                val cas = casovi.firstOrNull { it.broj == broj }
-                SlotRed(broj, termin, cas, dan, sada) { onIzmena(dan, broj) }
-                if (broj == 2) {
+            post.aktivne.forEach { smena ->
+                val casovi = Motor.casoviSmene(dan, smena, podaci)
+                val termini = Motor.termini(dan, smena, podaci)
+                if (post.b != null) {
                     Text(
-                        "VELIKI ODMOR · ${termini[1].kraj.hm()}–${termini[2].pocetak.hm()}",
-                        Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                        fontSize = 12.sp,
-                        color = SivaSvetla,
-                        fontWeight = FontWeight.SemiBold,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        "Smena ${smenaSlovo(smena)} · ${dobaTekst(Motor.posle(dan, smena, post))}",
+                        Modifier.padding(start = 4.dp, top = 8.dp),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Tekst,
                     )
+                }
+                termini.forEachIndexed { idx, termin ->
+                    val broj = idx + 1
+                    val cas = casovi.firstOrNull { it.broj == broj }
+                    SlotRed(broj, termin, cas, dan, sada) { onIzmena(dan, broj, smena) }
+                    if (broj == 2 && termini.size > 2) {
+                        Text(
+                            "VELIKI ODMOR · ${termini[1].kraj.hm()}–${termini[2].pocetak.hm()}",
+                            Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                            fontSize = 12.sp,
+                            color = SivaSvetla,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
             }
             Text(

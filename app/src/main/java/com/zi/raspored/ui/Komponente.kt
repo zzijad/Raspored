@@ -14,7 +14,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -39,6 +42,29 @@ fun Zaglavlje(nadnaslov: String, naslov: String, desno: @Composable () -> Unit =
             Text(naslov, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = Tekst)
         }
         desno()
+    }
+}
+
+/** Zaglavlje za korake podešavanja: traka napretka, "Korak X od Y", naslov i objašnjenje. */
+@Composable
+fun KorakZaglavlje(korak: Int?, ukupno: Int, naslov: String, opis: String) {
+    Column(
+        Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (korak != null) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                for (i in 1..ukupno) {
+                    Box(
+                        Modifier.weight(1f).height(5.dp).clip(RoundedCornerShape(50))
+                            .background(if (i <= korak) Plava else Granica),
+                    )
+                }
+            }
+            Text("Korak $korak od $ukupno", fontSize = 13.sp, color = Siva, fontWeight = FontWeight.SemiBold)
+        }
+        Text(naslov, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = Tekst)
+        Text(opis, fontSize = 15.sp, color = Siva, lineHeight = 21.sp)
     }
 }
 
@@ -81,22 +107,90 @@ fun DugmeIkona(ikona: ImageVector, opis: String, onClick: () -> Unit) {
 }
 
 @Composable
-fun Cip(tekst: String, izabran: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun Cip(
+    tekst: String,
+    izabran: Boolean,
+    modifier: Modifier = Modifier,
+    omogucen: Boolean = true,
+    visina: Dp = 44.dp,
+    onClick: () -> Unit,
+) {
     val oblik = RoundedCornerShape(12.dp)
+    val pozadina = when {
+        izabran -> Plava
+        !omogucen -> Pozadina
+        else -> Color.White
+    }
+    val ivica = when {
+        izabran -> Plava
+        !omogucen -> Pozadina
+        else -> Granica
+    }
     Box(
-        modifier.height(44.dp).clip(oblik)
-            .background(if (izabran) Plava else Color.White)
-            .border(1.dp, if (izabran) Plava else Granica, oblik)
-            .clickable(onClick = onClick),
+        modifier.height(visina).clip(oblik).background(pozadina).border(1.dp, ivica, oblik)
+            .clickable(enabled = omogucen, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             tekst,
-            color = if (izabran) Color.White else Tekst,
+            color = when {
+                izabran -> Color.White
+                !omogucen -> Color(0xFF9CA3AF)
+                else -> Tekst
+            },
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Clip,
         )
+    }
+}
+
+/** Izbor između nekoliko opcija (kao segmentirano dugme). */
+@Composable
+fun Segment(opcije: List<String>, izabrana: Int, onIzbor: (Int) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Pozadina).padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        opcije.forEachIndexed { i, naziv ->
+            Box(
+                Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(11.dp))
+                    .background(if (i == izabrana) Color.White else Color.Transparent)
+                    .clickable { onIzbor(i) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    naziv,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (i == izabrana) Tekst else Siva,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DugmeGlavno(tekst: String, modifier: Modifier = Modifier, omoguceno: Boolean = true, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        enabled = omoguceno,
+        modifier = modifier.height(56.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = Plava),
+    ) {
+        Text(tekst, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+fun DugmeSporedno(tekst: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.height(56.dp),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Text(tekst, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Tekst)
     }
 }

@@ -33,21 +33,33 @@ import androidx.compose.ui.unit.sp
 import com.zi.raspored.logic.Motor
 import com.zi.raspored.logic.Stanje
 import com.zi.raspored.model.CasUDanu
-import com.zi.raspored.model.Izmena
+import com.zi.raspored.model.Podaci
+import com.zi.raspored.model.SMENA_A
 import java.time.LocalDateTime
 
 @Composable
-fun SadaScreen(sada: LocalDateTime, izmene: List<Izmena>) {
+fun SadaScreen(sada: LocalDateTime, podaci: Podaci) {
+    val post = podaci.postavke ?: return
     val danas = sada.toLocalDate()
-    val stanje = Motor.stanje(sada, izmene)
-    val casovi = Motor.casoviZaDan(danas, izmene)
+    val stanje = Motor.stanje(sada, podaci)
+    val casovi = Motor.casoviZaDan(danas, podaci)
+    val obeSmene = post.b != null
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Zaglavlje(danas.lepo(), "Sada") {
-            if (Motor.jeNastavniDan(danas)) Znacka(smenaTekst(Motor.smena(danas)))
+            if (Motor.jeNastavniDan(danas)) {
+                Znacka(if (obeSmene) "Obe smene" else dobaTekst(Motor.posle(danas, SMENA_A, post)))
+            }
+        }
+
+        if (podaci.raspored.isEmpty()) {
+            BelaKartica {
+                Text("Raspored je prazan", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Tekst)
+                Text("Unesi časove u Podešavanja → Osnovni raspored.", fontSize = 15.sp, color = Siva)
+            }
         }
 
         when (stanje) {
@@ -89,24 +101,26 @@ fun SadaScreen(sada: LocalDateTime, izmene: List<Izmena>) {
             }
 
             is Stanje.Slobodno -> {
-                BelaKartica {
-                    Text(stanje.razlog, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Tekst)
-                    val d = stanje.datum
-                    val c = stanje.cas
-                    if (d != null && c != null) {
-                        Text(
-                            "Sledeći čas: ${d.lepo()}, ${c.broj}. čas, ${c.oznaka} u ${c.termin.pocetak.hm()}",
-                            fontSize = 15.sp,
-                            color = Siva,
-                        )
-                    } else {
-                        Text("Nema više nastave ove školske godine.", fontSize = 15.sp, color = Siva)
+                if (podaci.raspored.isNotEmpty()) {
+                    BelaKartica {
+                        Text(stanje.razlog, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Tekst)
+                        val d = stanje.datum
+                        val c = stanje.cas
+                        if (d != null && c != null) {
+                            Text(
+                                "Sledeći čas: ${d.lepo()}, ${c.broj}. čas, ${c.oznaka} u ${c.termin.pocetak.hm()}",
+                                fontSize = 15.sp,
+                                color = Siva,
+                            )
+                        } else {
+                            Text("Nema više nastave ove školske godine.", fontSize = 15.sp, color = Siva)
+                        }
                     }
                 }
             }
         }
 
-        if (casovi.isNotEmpty()) DanasLista(casovi, sada)
+        if (casovi.isNotEmpty()) DanasLista(casovi, sada, obeSmene)
 
         Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp)) {
             Text(
@@ -115,8 +129,10 @@ fun SadaScreen(sada: LocalDateTime, izmene: List<Izmena>) {
                 fontSize = 13.sp,
                 color = Siva,
             )
-            Motor.promenaSmene(danas)?.let { (d, s) ->
-                Text("${smenaTekst(s)} od ${d.kratko()}", fontSize = 13.sp, color = Siva)
+            if (!obeSmene) {
+                Motor.promenaSmene(danas, post)?.let { (d, posle) ->
+                    Text("${dobaTekst(posle)} od ${d.kratko()}", fontSize = 13.sp, color = Siva)
+                }
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -165,7 +181,7 @@ private fun SledeciRed(nadnaslov: String, naziv: String, vreme: String) {
 }
 
 @Composable
-private fun DanasLista(casovi: List<CasUDanu>, sada: LocalDateTime) {
+private fun DanasLista(casovi: List<CasUDanu>, sada: LocalDateTime, obeSmene: Boolean) {
     val vreme = sada.toLocalTime()
     val aktivni = casovi.filter { !it.otkazan }
     BelaKartica {
@@ -193,7 +209,13 @@ private fun DanasLista(casovi: List<CasUDanu>, sada: LocalDateTime) {
                 else -> c.oznaka
             }
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                Text("${c.broj}.", Modifier.width(28.dp), fontSize = 14.sp, color = boja, fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (obeSmene) "${c.broj}${smenaSlovo(c.smena)}" else "${c.broj}.",
+                    Modifier.width(32.dp),
+                    fontSize = 14.sp,
+                    color = boja,
+                    fontWeight = FontWeight.SemiBold,
+                )
                 Text(
                     opis,
                     Modifier.weight(1f),

@@ -27,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -55,6 +56,8 @@ import com.zi.raspored.ui.Siva
 import com.zi.raspored.ui.SmeneScreen
 import com.zi.raspored.ui.UnosScreen
 import com.zi.raspored.ui.smenaSlovo
+import com.zi.raspored.widget.Osvezavanje
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -114,9 +117,13 @@ fun App(skladiste: Skladiste) {
         }
     }
 
+    val scope = rememberCoroutineScope()
+
     fun postavi(novi: Podaci) {
         podaci = novi
         skladiste.sacuvaj(novi)
+        // widget odmah prikazuje nove podatke
+        scope.launch { runCatching { Osvezavanje.osveziOdmah(context) } }
     }
 
     fun idi(n: Nav) {

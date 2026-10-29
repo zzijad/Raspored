@@ -36,6 +36,7 @@ import com.zi.raspored.model.Podaci
 import com.zi.raspored.model.SMENA_A
 import com.zi.raspored.model.SkolskiPodaci
 import com.zi.raspored.model.TipIzmene
+import com.zi.raspored.model.WidgetOpcije
 import java.time.LocalDate
 
 @Composable
@@ -45,6 +46,7 @@ fun PodesavanjaScreen(
     onSmene: () -> Unit,
     onRaspored: () -> Unit,
     onSatnica: () -> Unit,
+    onWidget: () -> Unit,
     onIzvoz: () -> Unit,
     onUvoz: () -> Unit,
     onObrisiSve: () -> Unit,
@@ -81,6 +83,13 @@ fun PodesavanjaScreen(
             Stavka("Osnovni raspored", brojCasova(podaci.raspored.size), onRaspored)
             HorizontalDivider(color = Linija)
             Stavka("Satnica zvona", "${podaci.satnica.pre.first().pocetak.hm()} / ${podaci.satnica.posle.first().pocetak.hm()}", onSatnica)
+            HorizontalDivider(color = Linija)
+            Stavka(
+                "Izgled widgeta",
+                "slova: ${WidgetOpcije.velicine[podaci.widget.velicina].lowercase()} · ${WidgetOpcije.akcentiNazivi[podaci.widget.akcenat].lowercase()}" +
+                    if (podaci.widget.tamna) " · tamna" else "",
+                onWidget,
+            )
         }
 
         Naslov("Rezervna kopija")

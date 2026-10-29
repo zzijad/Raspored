@@ -55,6 +55,7 @@ import com.zi.raspored.ui.SatnicaScreen
 import com.zi.raspored.ui.Siva
 import com.zi.raspored.ui.SmeneScreen
 import com.zi.raspored.ui.UnosScreen
+import com.zi.raspored.ui.WidgetScreen
 import com.zi.raspored.ui.smenaSlovo
 import com.zi.raspored.widget.Osvezavanje
 import kotlinx.coroutines.launch
@@ -93,6 +94,7 @@ sealed interface Nav {
     data class IzborCasa(val dan: Int, val broj: Int, val smena: Int) : Nav
     data class Izmena(val datum: LocalDate, val broj: Int, val smena: Int) : Nav
     data object Satnica : Nav
+    data object Widget : Nav
 }
 
 private fun radniDan(d: LocalDate): LocalDate =
@@ -272,6 +274,15 @@ fun App(skladiste: Skladiste) {
             onNazad = { nazad() },
         )
 
+        Nav.Widget -> WidgetScreen(
+            izgled = podaci.widget,
+            onSacuvaj = { novi ->
+                postavi(podaci.copy(widget = novi))
+                nazad()
+            },
+            onNazad = { nazad() },
+        )
+
         Nav.Glavno -> GlavniEkran(
             ekran = ekran,
             onEkran = { ekran = it },
@@ -283,6 +294,7 @@ fun App(skladiste: Skladiste) {
             onSmene = { idi(Nav.Smene(onboarding = false)) },
             onRaspored = { idi(Nav.Unos(onboarding = false)) },
             onSatnica = { idi(Nav.Satnica) },
+            onWidget = { idi(Nav.Widget) },
             onIzvoz = { izvoz.launch("raspored-kopija.json") },
             onUvoz = { uvoz.launch(arrayOf("*/*")) },
             onObrisiSve = {
@@ -310,6 +322,7 @@ private fun GlavniEkran(
     onSmene: () -> Unit,
     onRaspored: () -> Unit,
     onSatnica: () -> Unit,
+    onWidget: () -> Unit,
     onIzvoz: () -> Unit,
     onUvoz: () -> Unit,
     onObrisiSve: () -> Unit,
@@ -349,6 +362,7 @@ private fun GlavniEkran(
                     onSmene = onSmene,
                     onRaspored = onRaspored,
                     onSatnica = onSatnica,
+                    onWidget = onWidget,
                     onIzvoz = onIzvoz,
                     onUvoz = onUvoz,
                     onObrisiSve = onObrisiSve,

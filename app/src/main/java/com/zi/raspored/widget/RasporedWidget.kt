@@ -3,6 +3,8 @@ package com.zi.raspored.widget
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -39,11 +41,10 @@ import com.zi.raspored.model.CasUDanu
 import com.zi.raspored.model.Podaci
 import com.zi.raspored.model.SMENA_A
 import com.zi.raspored.model.SkolskiPodaci
+import com.zi.raspored.model.WidgetIzgled
+import com.zi.raspored.model.WidgetOpcije
 import com.zi.raspored.ui.NarandzastaPozadina
 import com.zi.raspored.ui.NarandzastaTekst
-import com.zi.raspored.ui.Plava
-import com.zi.raspored.ui.Siva
-import com.zi.raspored.ui.Tekst
 import com.zi.raspored.ui.bojaRazreda
 import com.zi.raspored.ui.daniKratko
 import com.zi.raspored.ui.dobaTekst
@@ -72,12 +73,25 @@ class RasporedWidget : GlanceAppWidget() {
     }
 }
 
-private val Pozadina = Color(0xFFF3F5F7)
+/** Boje i veličine widgeta izračunate iz podešavanja. */
+private class Izgled(i: WidgetIzgled) {
+    val f = WidgetOpcije.faktor(i)
+    val akcenat = Color(WidgetOpcije.akcenat(i))
+    val pozadina = if (i.tamna) Color(0xFF111827) else Color.White
+    val tekst = if (i.tamna) Color(0xFFF9FAFB) else Color(0xFF111827)
+    val siva = if (i.tamna) Color(0xFF9CA3AF) else Color(0xFF4B5563)
+    val prazno = if (i.tamna) Color(0xFF1F2937) else Color(0xFFF3F5F7)
+    val neradno = if (i.tamna) Color(0xFF374151) else Color(0xFFE9ECEF)
+    val znacka = akcenat.copy(alpha = if (i.tamna) 0.35f else 0.15f)
+    val znackaTekst = if (i.tamna) Color.White else akcenat
 
-private fun stil(boja: Color, velicina: Int = 11, debljina: FontWeight = FontWeight.Normal, precrtano: Boolean = false) =
+    fun sp(v: Float) = (v * f).sp
+}
+
+private fun stil(boja: Color, velicina: TextUnit, debljina: FontWeight = FontWeight.Normal, precrtano: Boolean = false) =
     TextStyle(
         color = ColorProvider(boja),
-        fontSize = velicina.sp,
+        fontSize = velicina,
         fontWeight = debljina,
         textAlign = TextAlign.Center,
         textDecoration = if (precrtano) TextDecoration.LineThrough else TextDecoration.None,
@@ -85,12 +99,13 @@ private fun stil(boja: Color, velicina: Int = 11, debljina: FontWeight = FontWei
 
 @Composable
 private fun Sadrzaj(podaci: Podaci, sada: LocalDateTime) {
-    val koren = GlanceModifier.fillMaxSize().background(Color.White).cornerRadius(20.dp).padding(10.dp)
+    val iz = Izgled(podaci.widget)
+    val koren = GlanceModifier.fillMaxSize().background(iz.pozadina).cornerRadius(20.dp).padding(10.dp)
         .clickable(actionStartActivity<MainActivity>())
     val post = podaci.postavke
     if (post == null || podaci.raspored.isEmpty()) {
         Box(koren, contentAlignment = Alignment.Center) {
-            Text("Otvori Raspored i unesi svoj raspored", style = stil(Siva, 13, FontWeight.Medium))
+            Text("Otvori Raspored i unesi svoj raspored", style = stil(iz.siva, iz.sp(13f), FontWeight.Medium))
         }
         return
     }
@@ -111,53 +126,63 @@ private fun Sadrzaj(podaci: Podaci, sada: LocalDateTime) {
     }.let { if (post.smena(it) != null) it else SMENA_A }
 
     val posle = Motor.posle(ponedeljak, smena, post)
+    val sirinaDana = (30 * iz.f).dp
 
     Column(koren) {
         Row(GlanceModifier.fillMaxWidth().padding(start = 2.dp, end = 2.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "Nedelja ${ponedeljak.dayOfMonth}.–${ponedeljak.plusDays(4).kratko()}",
                 GlanceModifier.defaultWeight(),
-                style = TextStyle(color = ColorProvider(Tekst), fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                style = TextStyle(color = ColorProvider(iz.tekst), fontSize = iz.sp(13f), fontWeight = FontWeight.Bold),
             )
             Text(
                 (if (post.b != null) "Smena ${if (smena == SMENA_A) "A" else "B"} · " else "") + dobaTekst(posle),
-                GlanceModifier.background(Color(0xFFDBE4FB)).cornerRadius(10.dp).padding(horizontal = 8.dp, vertical = 3.dp),
-                style = stil(Plava, 11, FontWeight.Bold),
+                GlanceModifier.background(iz.znacka).cornerRadius(10.dp).padding(horizontal = 8.dp, vertical = 3.dp),
+                style = stil(iz.znackaTekst, iz.sp(11f), FontWeight.Bold),
             )
         }
 
         Row(GlanceModifier.fillMaxWidth().padding(bottom = 2.dp)) {
-            Spacer(GlanceModifier.width(30.dp))
+            Spacer(GlanceModifier.width(sirinaDana))
             for (b in 1..SkolskiPodaci.BROJ_CASOVA) {
-                Text("$b.", GlanceModifier.defaultWeight(), style = stil(Siva, 10, FontWeight.Bold))
+                Text("$b.", GlanceModifier.defaultWeight(), style = stil(iz.siva, iz.sp(10f), FontWeight.Bold))
             }
         }
 
         for (i in 0..4) {
             val d = ponedeljak.plusDays(i.toLong())
-            DanRed(d, d == danas, smena, podaci, sada, GlanceModifier.fillMaxWidth().defaultWeight().padding(vertical = 1.5.dp))
+            DanRed(d, d == danas, smena, podaci, sada, iz, sirinaDana, GlanceModifier.fillMaxWidth().defaultWeight().padding(vertical = 1.5.dp))
         }
     }
 }
 
 @Composable
-private fun DanRed(d: LocalDate, jeDanas: Boolean, smena: Int, podaci: Podaci, sada: LocalDateTime, modifier: GlanceModifier) {
+private fun DanRed(
+    d: LocalDate,
+    jeDanas: Boolean,
+    smena: Int,
+    podaci: Podaci,
+    sada: LocalDateTime,
+    iz: Izgled,
+    sirinaDana: Dp,
+    modifier: GlanceModifier,
+) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Text(
             daniKratko[d.dayOfWeek.value - 1],
-            GlanceModifier.width(30.dp),
+            GlanceModifier.width(sirinaDana),
             style = TextStyle(
-                color = ColorProvider(if (jeDanas) Plava else Tekst),
-                fontSize = 11.sp,
+                color = ColorProvider(if (jeDanas) iz.akcenat else iz.tekst),
+                fontSize = iz.sp(11f),
                 fontWeight = FontWeight.Bold,
             ),
         )
         if (!Motor.jeNastavniDan(d)) {
             Box(
-                GlanceModifier.defaultWeight().fillMaxHeight().background(Color(0xFFE9ECEF)).cornerRadius(6.dp),
+                GlanceModifier.defaultWeight().fillMaxHeight().background(iz.neradno).cornerRadius(6.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(Motor.razlogNeradnog(d) ?: "", style = stil(Siva, 11, FontWeight.Medium))
+                Text(Motor.razlogNeradnog(d) ?: "", style = stil(iz.siva, iz.sp(11f), FontWeight.Medium))
             }
         } else {
             val casovi = Motor.casoviSmene(d, smena, podaci)
@@ -167,24 +192,24 @@ private fun DanRed(d: LocalDate, jeDanas: Boolean, smena: Int, podaci: Podaci, s
                 val c = casovi.firstOrNull { it.broj == b }
                 val t = termini.getOrNull(b - 1)
                 val trenutni = jeDanas && t != null && !vreme.isBefore(t.pocetak) && vreme.isBefore(t.kraj)
-                Celija(c, trenutni, GlanceModifier.defaultWeight().fillMaxHeight().padding(horizontal = 1.dp))
+                Celija(c, trenutni, iz, GlanceModifier.defaultWeight().fillMaxHeight().padding(horizontal = 1.dp))
             }
         }
     }
 }
 
 @Composable
-private fun Celija(c: CasUDanu?, trenutni: Boolean, modifier: GlanceModifier) {
+private fun Celija(c: CasUDanu?, trenutni: Boolean, iz: Izgled, modifier: GlanceModifier) {
     if (c == null) {
         Box(modifier) {
-            Box(GlanceModifier.fillMaxSize().background(Pozadina).cornerRadius(6.dp)) {}
+            Box(GlanceModifier.fillMaxSize().background(iz.prazno).cornerRadius(6.dp)) {}
         }
         return
     }
     Box(modifier) {
         val (razredPozadina, razredBoja) = bojaRazreda(c.odeljenje)
         val pozadina = when {
-            trenutni && !c.otkazan -> Plava
+            trenutni && !c.otkazan -> iz.akcenat
             c.izmenjen -> NarandzastaPozadina
             else -> razredPozadina
         }
@@ -199,7 +224,7 @@ private fun Celija(c: CasUDanu?, trenutni: Boolean, modifier: GlanceModifier) {
         ) {
             Text(
                 c.odeljenje + "\n" + (if (c.grupa == null) "" else "[${c.grupa}]"),
-                style = stil(boja, 10, FontWeight.Bold, precrtano = c.otkazan),
+                style = stil(boja, iz.sp(10f), FontWeight.Bold, precrtano = c.otkazan),
                 maxLines = 2,
             )
         }

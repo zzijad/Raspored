@@ -11,6 +11,8 @@ import com.zi.raspored.model.SkolskiPodaci
 import com.zi.raspored.model.Smena
 import com.zi.raspored.model.Termin
 import com.zi.raspored.model.TipIzmene
+import com.zi.raspored.model.WidgetIzgled
+import com.zi.raspored.model.WidgetOpcije
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
@@ -69,6 +71,12 @@ object Kodek {
         sat.put("posle", terminiUJson(p.satnica.posle))
         o.put("satnica", sat)
 
+        val wo = JSONObject()
+        wo.put("velicina", p.widget.velicina)
+        wo.put("tamna", p.widget.tamna)
+        wo.put("akcenat", p.widget.akcenat)
+        o.put("widget", wo)
+
         return o.toString(2)
     }
 
@@ -120,7 +128,15 @@ object Kodek {
             if (pre.size == SkolskiPodaci.BROJ_CASOVA && posle.size == SkolskiPodaci.BROJ_CASOVA) Satnica(pre, posle) else null
         } ?: SkolskiPodaci.podrazumevanaSatnica
 
-        return Podaci(postavke, raspored, izmene, satnica)
+        val widget = o.optJSONObject("widget")?.let { w ->
+            WidgetIzgled(
+                velicina = w.optInt("velicina", 1).coerceIn(0, WidgetOpcije.velicine.lastIndex),
+                tamna = w.optBoolean("tamna", false),
+                akcenat = w.optInt("akcenat", 0).coerceIn(0, WidgetOpcije.akcenti.lastIndex),
+            )
+        } ?: WidgetIzgled()
+
+        return Podaci(postavke, raspored, izmene, satnica, widget)
     }
 
     private fun smenaUJson(s: Smena): JSONObject {

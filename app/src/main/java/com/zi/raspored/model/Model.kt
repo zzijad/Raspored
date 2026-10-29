@@ -42,12 +42,26 @@ data class Postavke(val a: Smena, val aPosleUSeptembru: Boolean, val b: Smena?) 
 /** Satnica: termini časova pre podne (I smena) i posle podne (II smena). */
 data class Satnica(val pre: List<Termin>, val posle: List<Termin>)
 
+/** Izgled widgeta: veličina slova, tamna pozadina i boja oznake (indeksi u WidgetOpcije). */
+data class WidgetIzgled(val velicina: Int = 1, val tamna: Boolean = false, val akcenat: Int = 0)
+
+object WidgetOpcije {
+    val velicine = listOf("Malo", "Normalno", "Veliko", "Vrlo veliko")
+    val faktori = listOf(0.85f, 1f, 1.25f, 1.5f)
+    val akcentiNazivi = listOf("Plava", "Zelena", "Ljubičasta", "Narandžasta", "Crvena")
+    val akcenti: List<Long> = listOf(0xFF1D4ED8, 0xFF0F766E, 0xFF7C3AED, 0xFFC2410C, 0xFFBE123C)
+
+    fun faktor(i: WidgetIzgled): Float = faktori.getOrElse(i.velicina) { 1f }
+    fun akcenat(i: WidgetIzgled): Long = akcenti.getOrElse(i.akcenat) { akcenti[0] }
+}
+
 /** Sve što aplikacija čuva. postavke == null znači da podešavanje još nije urađeno. */
 data class Podaci(
     val postavke: Postavke?,
     val raspored: List<Cas>,
     val izmene: List<Izmena>,
     val satnica: Satnica,
+    val widget: WidgetIzgled = WidgetIzgled(),
 )
 
 /** Čas kakav stvarno važi za određeni dan (posle primene izmena). */

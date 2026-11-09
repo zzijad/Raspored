@@ -12,12 +12,26 @@ android {
         applicationId = "com.zi.raspored"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "0.5"
+        versionCode = 6
+        versionName = "0.5.1"
+    }
+
+    // Stalni ključ: svaki build je potpisan istim ključem, pa se nova verzija instalira preko stare.
+    signingConfigs {
+        create("stalni") {
+            storeFile = file("raspored.keystore")
+            storePassword = "_CY8YyVUodSzyTY15ck1Q9Uv"
+            keyAlias = "raspored"
+            keyPassword = "_CY8YyVUodSzyTY15ck1Q9Uv"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("stalni")
+        }
         release {
+            signingConfig = signingConfigs.getByName("stalni")
             isMinifyEnabled = false
         }
     }

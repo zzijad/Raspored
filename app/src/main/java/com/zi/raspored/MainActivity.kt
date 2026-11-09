@@ -55,6 +55,7 @@ import com.zi.raspored.ui.SatnicaScreen
 import com.zi.raspored.ui.Siva
 import com.zi.raspored.ui.SmeneScreen
 import com.zi.raspored.ui.UnosScreen
+import com.zi.raspored.ui.KalendarScreen
 import com.zi.raspored.ui.WidgetScreen
 import com.zi.raspored.ui.smenaSlovo
 import com.zi.raspored.widget.Osvezavanje
@@ -95,6 +96,7 @@ sealed interface Nav {
     data class Izmena(val datum: LocalDate, val broj: Int, val smena: Int) : Nav
     data object Satnica : Nav
     data object Widget : Nav
+    data object Kalendar : Nav
 }
 
 private fun radniDan(d: LocalDate): LocalDate =
@@ -123,6 +125,7 @@ fun App(skladiste: Skladiste) {
 
     fun postavi(novi: Podaci) {
         podaci = novi
+        Skladiste.primeniKalendar(novi)
         skladiste.sacuvaj(novi)
         // widget odmah prikazuje nove podatke
         scope.launch { runCatching { Osvezavanje.osveziOdmah(context) } }
@@ -283,6 +286,14 @@ fun App(skladiste: Skladiste) {
             onNazad = { nazad() },
         )
 
+        Nav.Kalendar -> KalendarScreen(
+            preuzet = podaci.kalendar,
+            adresa = podaci.kalendarUrl,
+            onPreuzet = { k, url -> postavi(podaci.copy(kalendar = k, kalendarUrl = url)) },
+            onVratiUgradjeni = { postavi(podaci.copy(kalendar = null)) },
+            onNazad = { nazad() },
+        )
+
         Nav.Glavno -> GlavniEkran(
             ekran = ekran,
             onEkran = { ekran = it },
@@ -295,6 +306,7 @@ fun App(skladiste: Skladiste) {
             onRaspored = { idi(Nav.Unos(onboarding = false)) },
             onSatnica = { idi(Nav.Satnica) },
             onWidget = { idi(Nav.Widget) },
+            onKalendar = { idi(Nav.Kalendar) },
             onIzvoz = { izvoz.launch("raspored-kopija.json") },
             onUvoz = { uvoz.launch(arrayOf("*/*")) },
             onObrisiSve = {
@@ -323,6 +335,7 @@ private fun GlavniEkran(
     onRaspored: () -> Unit,
     onSatnica: () -> Unit,
     onWidget: () -> Unit,
+    onKalendar: () -> Unit,
     onIzvoz: () -> Unit,
     onUvoz: () -> Unit,
     onObrisiSve: () -> Unit,
@@ -353,7 +366,7 @@ private fun GlavniEkran(
     ) { padding ->
         Box(Modifier.padding(padding)) {
             when (ekran) {
-                Ekran.SADA -> SadaScreen(sada, podaci)
+                Ekran.SADA -> SadaScreen(sada, podaci, onKalendar)
                 Ekran.DAN -> DanScreen(izabraniDan, onDan, sada, podaci, onIzmena)
                 Ekran.NEDELJA -> NedeljaScreen(izabraniDan, onDan, sada, podaci, onIzmena)
                 Ekran.PODESAVANJA -> PodesavanjaScreen(
@@ -363,6 +376,7 @@ private fun GlavniEkran(
                     onRaspored = onRaspored,
                     onSatnica = onSatnica,
                     onWidget = onWidget,
+                    onKalendar = onKalendar,
                     onIzvoz = onIzvoz,
                     onUvoz = onUvoz,
                     onObrisiSve = onObrisiSve,

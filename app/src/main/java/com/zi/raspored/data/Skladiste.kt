@@ -1,6 +1,7 @@
 package com.zi.raspored.data
 
 import android.content.Context
+import com.zi.raspored.model.Kalendari
 import com.zi.raspored.model.Podaci
 import com.zi.raspored.model.SkolskiPodaci
 
@@ -11,14 +12,9 @@ class Skladiste(context: Context) {
 
     fun ucitaj(): Podaci {
         val tekst = prefs.getString(KLJUC, null)
-        if (tekst != null) {
-            try {
-                return Kodek.izJsona(tekst)
-            } catch (e: Exception) {
-                // oštećen zapis: krećemo od praznog
-            }
-        }
-        return prazno()
+        val p = tekst?.let { runCatching { Kodek.izJsona(it) }.getOrNull() } ?: prazno()
+        primeniKalendar(p)
+        return p
     }
 
     fun sacuvaj(p: Podaci) {
@@ -27,6 +23,11 @@ class Skladiste(context: Context) {
 
     companion object {
         private const val KLJUC = "podaci"
+
+        /** Postavlja kalendar koji koristi cela aplikacija (i widget). */
+        fun primeniKalendar(p: Podaci) {
+            Kalendari.aktivan = p.kalendar ?: Kalendari.ugradjen
+        }
 
         fun prazno() = Podaci(
             postavke = null,

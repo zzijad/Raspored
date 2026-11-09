@@ -62,6 +62,9 @@ data class Podaci(
     val izmene: List<Izmena>,
     val satnica: Satnica,
     val widget: WidgetIzgled = WidgetIzgled(),
+    /** Preuzeti školski kalendar; null = ugrađeni. */
+    val kalendar: Kalendar? = null,
+    val kalendarUrl: String = SkolskiPodaci.KALENDAR_URL,
 )
 
 /** Čas kakav stvarno važi za određeni dan (posle primene izmena). */

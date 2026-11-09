@@ -1,10 +1,11 @@
 package com.zi.raspored.logic
 
 import com.zi.raspored.model.CasUDanu
+import com.zi.raspored.model.Kalendar
+import com.zi.raspored.model.Kalendari
 import com.zi.raspored.model.Podaci
 import com.zi.raspored.model.Postavke
 import com.zi.raspored.model.SMENA_A
-import com.zi.raspored.model.SkolskiPodaci
 import com.zi.raspored.model.Termin
 import com.zi.raspored.model.TipIzmene
 import java.time.DayOfWeek
@@ -55,17 +56,20 @@ object Motor {
         return if (posle(datum, smena, post)) p.satnica.posle else p.satnica.pre
     }
 
-    private fun uPolugodistu(datum: LocalDate): Boolean =
-        SkolskiPodaci.polugodista.any { !datum.isBefore(it.od) && !datum.isAfter(it.doDana) }
+    private val kalendar: Kalendar get() = Kalendari.aktivan
 
-    fun jeNastavniDan(datum: LocalDate): Boolean =
-        datum.dayOfWeek.value <= 5 && uPolugodistu(datum) && datum !in SkolskiPodaci.neradni
+    fun jeNastavniDan(datum: LocalDate): Boolean = datum in kalendar.nastavni
 
     fun razlogNeradnog(datum: LocalDate): String? = when {
         datum.dayOfWeek.value > 5 -> "Vikend"
-        !uPolugodistu(datum) -> "Raspust"
-        datum in SkolskiPodaci.neradni -> "Neradni dan"
-        else -> null
+        jeNastavniDan(datum) -> null
+        else -> kalendar.opisi[datum] ?: "Raspust"
+    }
+
+    /** Da li za odeljenje tog dana ima nastave (VIII razred završava ranije). */
+    private fun imaNastaveZa(odeljenje: String, datum: LocalDate): Boolean {
+        val krajOsmi = kalendar.krajOsmi ?: return true
+        return !(odeljenje.startsWith("VIII") && datum.isAfter(krajOsmi))
     }
 
     private data class Slot(val odeljenje: String, val grupa: Int?, val izmenjen: Boolean, val otkazan: Boolean)
@@ -97,6 +101,7 @@ object Motor {
 
         return mapa
             .filterKeys { it in 1..termini.size }
+            .filterValues { imaNastaveZa(it.odeljenje, datum) }
             .map { (broj, s) ->
                 CasUDanu(broj, smena, posle, s.odeljenje, s.grupa, termini[broj - 1], s.izmenjen, s.otkazan)
             }
@@ -146,16 +151,11 @@ object Motor {
         return null
     }
 
-    fun preostaloNastavnihDana(od: LocalDate): Int {
-        val kraj = SkolskiPodaci.polugodista.last().doDana
-        var d = od
-        var broj = 0
-        while (!d.isAfter(kraj)) {
-            if (jeNastavniDan(d)) broj++
-            d = d.plusDays(1)
-        }
-        return broj
-    }
+    fun preostaloNastavnihDana(od: LocalDate): Int = kalendar.nastavni.count { !it.isBefore(od) }
+
+    /** Kalendar je za prošlu školsku godinu (od 15. avgusta treba novi). */
+    fun kalendarIstekao(danas: LocalDate): Boolean =
+        danas.isAfter(LocalDate.of(kalendar.poslednji.year, 8, 15))
 
     /** Sledeći nastavni dan kada smena A menja doba dana: (datum, posle podne?). */
     fun promenaSmene(od: LocalDate, postavke: Postavke): Pair<LocalDate, Boolean>? {

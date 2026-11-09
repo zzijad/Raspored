@@ -31,6 +31,12 @@ object SkolskiPodaci {
         Period(LocalDate.of(2027, 1, 18), LocalDate.of(2027, 6, 11)),
     )
 
+    /** Poslednji nastavni dan za VIII razred. */
+    val krajOsmi: LocalDate = LocalDate.of(2027, 5, 28)
+
+    /** Adresa sa koje se podrazumevano preuzima kalendar. */
+    const val KALENDAR_URL = "https://osstefannemanja.edu.rs/rs/skolski-kalendar"
+
     /** Neradni dani unutar polugodišta (praznici, prolećni raspust...). */
     val neradni: Set<LocalDate> = listOf(
         "2026-11-11", "2026-11-12", "2026-11-13",

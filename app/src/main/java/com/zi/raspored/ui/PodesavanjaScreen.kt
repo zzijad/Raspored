@@ -32,9 +32,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zi.raspored.logic.Motor
 import com.zi.raspored.model.Izmena
+import com.zi.raspored.model.Kalendari
 import com.zi.raspored.model.Podaci
 import com.zi.raspored.model.SMENA_A
-import com.zi.raspored.model.SkolskiPodaci
 import com.zi.raspored.model.TipIzmene
 import com.zi.raspored.model.WidgetOpcije
 import java.time.LocalDate
@@ -47,6 +47,7 @@ fun PodesavanjaScreen(
     onRaspored: () -> Unit,
     onSatnica: () -> Unit,
     onWidget: () -> Unit,
+    onKalendar: () -> Unit,
     onIzvoz: () -> Unit,
     onUvoz: () -> Unit,
     onObrisiSve: () -> Unit,
@@ -54,14 +55,15 @@ fun PodesavanjaScreen(
     onObrisiStare: () -> Unit,
 ) {
     val post = podaci.postavke ?: return
-    val kraj = SkolskiPodaci.polugodista.last().doDana
+    val kal = Kalendari.aktivan
+    val kraj = kal.poslednji
     var potvrdaBrisanja by remember { mutableStateOf(false) }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Zaglavlje("Školska ${SkolskiPodaci.polugodista.first().od.year}/${kraj.year}.", "Podešavanja")
+        Zaglavlje("Školska ${kal.godina}.", "Podešavanja")
 
         BelaKartica {
             if (post.b == null) {
@@ -89,6 +91,16 @@ fun PodesavanjaScreen(
                 "slova: ${WidgetOpcije.velicine[podaci.widget.velicina].lowercase()} · ${WidgetOpcije.akcentiNazivi[podaci.widget.akcenat].lowercase()}" +
                     if (podaci.widget.tamna) " · tamna" else "",
                 onWidget,
+            )
+        }
+
+        Naslov("Školski kalendar")
+        BelaKartica {
+            Stavka(
+                "Kalendar ${kal.godina}",
+                if (podaci.kalendar == null) "ugrađen · dodirni da preuzmeš sa sajta škole"
+                else "sa sajta škole" + (kal.preuzet?.let { ", preuzet ${it.kratko()}" } ?: ""),
+                onKalendar,
             )
         }
 

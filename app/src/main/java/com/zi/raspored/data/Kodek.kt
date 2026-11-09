@@ -2,6 +2,7 @@ package com.zi.raspored.data
 
 import com.zi.raspored.model.Cas
 import com.zi.raspored.model.Izmena
+import com.zi.raspored.model.Kalendar
 import com.zi.raspored.model.Podaci
 import com.zi.raspored.model.Postavke
 import com.zi.raspored.model.SMENA_A
@@ -77,6 +78,19 @@ object Kodek {
         wo.put("akcenat", p.widget.akcenat)
         o.put("widget", wo)
 
+        o.put("kalendarUrl", p.kalendarUrl)
+        p.kalendar?.let { k ->
+            val ko = JSONObject()
+            ko.put("nastavni", JSONArray(k.nastavni.sorted().map { it.toString() }))
+            val op = JSONObject()
+            k.opisi.toSortedMap().forEach { (d, t) -> op.put(d.toString(), t) }
+            ko.put("opisi", op)
+            k.krajOsmi?.let { ko.put("krajOsmi", it.toString()) }
+            k.izvor?.let { ko.put("izvor", it) }
+            k.preuzet?.let { ko.put("preuzet", it.toString()) }
+            o.put("kalendar", ko)
+        }
+
         return o.toString(2)
     }
 
@@ -136,7 +150,22 @@ object Kodek {
             )
         } ?: WidgetIzgled()
 
-        return Podaci(postavke, raspored, izmene, satnica, widget)
+        val kalendar = o.optJSONObject("kalendar")?.let { ko ->
+            runCatching {
+                val n = ko.getJSONArray("nastavni")
+                val op = ko.optJSONObject("opisi") ?: JSONObject()
+                Kalendar(
+                    nastavni = (0 until n.length()).map { LocalDate.parse(n.getString(it)) }.toSet(),
+                    opisi = op.keys().asSequence().associate { LocalDate.parse(it) to op.getString(it) },
+                    krajOsmi = ko.optString("krajOsmi", "").ifEmpty { null }?.let { LocalDate.parse(it) },
+                    izvor = ko.optString("izvor", "").ifEmpty { null },
+                    preuzet = ko.optString("preuzet", "").ifEmpty { null }?.let { LocalDate.parse(it) },
+                )
+            }.getOrNull()?.takeIf { it.nastavni.isNotEmpty() }
+        }
+        val kalendarUrl = o.optString("kalendarUrl", "").ifEmpty { SkolskiPodaci.KALENDAR_URL }
+
+        return Podaci(postavke, raspored, izmene, satnica, widget, kalendar, kalendarUrl)
     }
 
     private fun smenaUJson(s: Smena): JSONObject {

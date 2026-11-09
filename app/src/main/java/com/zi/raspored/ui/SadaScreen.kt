@@ -1,6 +1,7 @@
 package com.zi.raspored.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,7 +39,7 @@ import com.zi.raspored.model.SMENA_A
 import java.time.LocalDateTime
 
 @Composable
-fun SadaScreen(sada: LocalDateTime, podaci: Podaci) {
+fun SadaScreen(sada: LocalDateTime, podaci: Podaci, onKalendar: () -> Unit) {
     val post = podaci.postavke ?: return
     val danas = sada.toLocalDate()
     val stanje = Motor.stanje(sada, podaci)
@@ -52,6 +53,20 @@ fun SadaScreen(sada: LocalDateTime, podaci: Podaci) {
         Zaglavlje(danas.lepo(), "Sada") {
             if (Motor.jeNastavniDan(danas)) {
                 Znacka(if (obeSmene) "Obe smene" else dobaTekst(Motor.posle(danas, SMENA_A, post)))
+            }
+        }
+
+        if (Motor.kalendarIstekao(danas)) {
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(NarandzastaPozadina)
+                    .clickable(onClick = onKalendar).padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Nova školska godina", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = NarandzastaTekst)
+                    Text("Dodirni da preuzmeš novi školski kalendar sa sajta škole.", fontSize = 13.sp, color = NarandzastaTekst)
+                }
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = NarandzastaTekst)
             }
         }
 
